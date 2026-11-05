@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+dados/*
+!dados/.gitkeep
+*.tif
+*.gpkg
+*.parquet
+node_modules/
+dist/
+.terraform/
+*.tfstate*
+.DS_Store

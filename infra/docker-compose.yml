@@ -1,0 +1,24 @@
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: mvr
+      POSTGRES_USER: mvr
+      POSTGRES_PASSWORD: mvr
+    ports: ["5432:5432"]
+    volumes: ["postgis:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mvr"]
+      interval: 10s
+      retries: 10
+  api:
+    build: ../servicos/api
+    environment:
+      MVR_AMBIENTE: local
+      MVR_DATABASE_URL: postgresql://mvr:mvr@postgis:5432/mvr
+    ports: ["8000:8000"]
+    depends_on:
+      postgis:
+        condition: service_healthy
+volumes:
+  postgis: {}
