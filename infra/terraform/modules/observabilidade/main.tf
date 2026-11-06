@@ -6,7 +6,7 @@ variable "retencao_logs_dias" { type = number }
 variable "email_alertas" { type = string }
 variable "alb_arn_suffix" { type = string }
 variable "target_group_arn_suffix" { type = string }
-variable "banco_identificador" { type = string }
+variable "banco_cluster" { type = string }
 
 resource "aws_cloudwatch_log_group" "servicos" {
   name              = "/mvr/${var.ambiente}"
@@ -73,7 +73,7 @@ resource "aws_cloudwatch_metric_alarm" "banco_cpu" {
   evaluation_periods  = 3
   threshold           = 80
   comparison_operator = "GreaterThanThreshold"
-  dimensions          = { DBInstanceIdentifier = var.banco_identificador }
+  dimensions          = { DBClusterIdentifier = var.banco_cluster }
   alarm_actions       = [aws_sns_topic.alertas.arn]
 }
 

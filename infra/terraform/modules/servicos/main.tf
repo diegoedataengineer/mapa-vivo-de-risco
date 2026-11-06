@@ -12,6 +12,7 @@ variable "memoria" { type = number }
 variable "replicas_min" { type = number }
 variable "replicas_max" { type = number }
 variable "segredo_banco_arn" { type = string }
+variable "segredo_airflow_arn" { type = string }
 variable "bucket_dados_arn" { type = string }
 variable "log_group" { type = string }
 variable "regiao" { type = string }
@@ -48,7 +49,7 @@ resource "aws_iam_role_policy" "execucao_segredos" {
   role = aws_iam_role.execucao.id
   policy = jsonencode({
     Version   = "2012-10-17"
-    Statement = [{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = var.segredo_banco_arn }]
+    Statement = [{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = [var.segredo_banco_arn, var.segredo_airflow_arn] }]
   })
 }
 
@@ -89,7 +90,12 @@ resource "aws_ecs_task_definition" "api" {
       { name = "MVR_AMBIENTE", value = var.ambiente },
       { name = "MVR_VERSAO", value = var.tag_api }
     ]
-    secrets = [{ name = "MVR_BANCO", valueFrom = var.segredo_banco_arn }]
+    secrets = [
+      { name = "MVR_BANCO", valueFrom = var.segredo_banco_arn },
+      { name = "MVR_AIRFLOW_URL", valueFrom = "${var.segredo_airflow_arn}:url::" },
+      { name = "MVR_AIRFLOW_USUARIO", valueFrom = "${var.segredo_airflow_arn}:usuario::" },
+      { name = "MVR_AIRFLOW_SENHA", valueFrom = "${var.segredo_airflow_arn}:senha::" }
+    ]
     healthCheck = {
       command  = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/saude')\" || exit 1"]
       interval = 30

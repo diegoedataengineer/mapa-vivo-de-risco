@@ -16,6 +16,9 @@ services:
     environment:
       MVR_AMBIENTE: local
       MVR_DATABASE_URL: postgresql://mvr:mvr@postgis:5432/mvr
+      MVR_AIRFLOW_URL: ${MVR_AIRFLOW_URL:-https://airflow.mundodosdadosbr.com}
+      MVR_AIRFLOW_USUARIO: ${MVR_AIRFLOW_USUARIO:-mvr}
+      MVR_AIRFLOW_SENHA: ${MVR_AIRFLOW_SENHA:-}
     ports: ["8000:8000"]
     depends_on:
       postgis:

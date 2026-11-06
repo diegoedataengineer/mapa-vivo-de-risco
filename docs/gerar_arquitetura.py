@@ -114,12 +114,12 @@ icone("aws/integration", "eventbridge", X3, Y1, "EventBridge", "Object Created e
 icone("aws/compute", "ec2-spot-instance", X4, Y1, "Batch · detecção (GPU)", "EC2 Spot: segmentação por tile, U-Net")
 
 icone("aws/compute", "batch", X1, Y2, "Batch · exposição", "SGB × Censo × detecções, lista de visitas")
-icone("aws/database", "rds-postgresql-instance", X2, Y2, "RDS PostgreSQL + PostGIS", "sub-rede privada, criptografado, multi-AZ em prod")
+icone("aws/database", "rds-postgresql-instance", X2, Y2, "Aurora Serverless v2 + PostGIS", "pausa em 0 ACU; privado, criptografado")
 icone("aws/security", "secrets-manager", X3, Y2, "Secrets Manager", "credencial do banco")
 icone("aws/management", "cloudtrail", 1590, Y2, "CloudTrail", "auditoria de acesso")
 
 icone("aws/network", "elb-application-load-balancer", X1, Y3, "ALB", "health check em /saude")
-icone("aws/compute", "fargate", X2, Y3, "ECS Fargate · API", "FastAPI, autoescala, rollback automático")
+icone("aws/compute", "fargate", X2, Y3, "ECS Fargate · API", "FastAPI; módulo Rotinas lê o Airflow")
 icone("aws/management", "cloudwatch", X3, Y3, "CloudWatch", "logs e alarmes: 5xx, p95, tarefas saudáveis")
 icone("aws/integration", "simple-notification-service-sns", X4, Y3, "SNS", "alertas por e-mail")
 

@@ -6,7 +6,10 @@ import os
 
 from fastapi import FastAPI
 
+from mvr_api.orquestracao import router as orquestracao
+
 app = FastAPI(title="Mapa Vivo de Risco", version="0.1.0")
+app.include_router(orquestracao)
 
 
 @app.get("/saude")

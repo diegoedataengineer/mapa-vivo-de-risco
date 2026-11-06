@@ -25,8 +25,10 @@ variable "api_cpu" { type = number }
 variable "api_memoria" { type = number }
 variable "api_replicas_min" { type = number }
 variable "api_replicas_max" { type = number }
-variable "banco_classe" { type = string }
-variable "banco_multi_az" { type = bool }
+variable "banco_acu_min" { type = number }
+variable "banco_acu_max" { type = number }
+variable "banco_pausa_segundos" { type = number }
+variable "banco_instancias" { type = number }
 variable "retencao_backup_dias" { type = number }
 variable "retencao_logs_dias" { type = number }
 variable "gpu_max_vcpus" { type = number }
@@ -58,8 +60,10 @@ module "dados" {
   ambiente             = var.ambiente
   subnets_privadas     = module.rede.subnets_privadas
   sg_banco             = module.rede.sg_banco
-  banco_classe         = var.banco_classe
-  banco_multi_az       = var.banco_multi_az
+  banco_acu_min        = var.banco_acu_min
+  banco_acu_max        = var.banco_acu_max
+  banco_pausa_segundos = var.banco_pausa_segundos
+  banco_instancias     = var.banco_instancias
   retencao_backup_dias = var.retencao_backup_dias
 }
 
@@ -71,26 +75,27 @@ module "observabilidade" {
   email_alertas           = var.email_alertas
   alb_arn_suffix          = module.servicos.alb_arn_suffix
   target_group_arn_suffix = module.servicos.target_group_arn_suffix
-  banco_identificador     = "${var.nome}-${var.ambiente}"
+  banco_cluster           = module.dados.banco_cluster
 }
 
 module "servicos" {
-  source            = "../../modules/servicos"
-  nome              = var.nome
-  ambiente          = var.ambiente
-  vpc_id            = module.rede.vpc_id
-  subnets           = module.rede.subnets_publicas
-  sg_servicos       = module.rede.sg_servicos
-  imagem_api        = module.registro.repositorios["api"]
-  tag_api           = var.tag
-  cpu               = var.api_cpu
-  memoria           = var.api_memoria
-  replicas_min      = var.api_replicas_min
-  replicas_max      = var.api_replicas_max
-  segredo_banco_arn = module.dados.segredo_banco_arn
-  bucket_dados_arn  = module.dados.bucket_dados_arn
-  log_group         = "/mvr/${var.ambiente}"
-  regiao            = var.regiao
+  source              = "../../modules/servicos"
+  nome                = var.nome
+  ambiente            = var.ambiente
+  vpc_id              = module.rede.vpc_id
+  subnets             = module.rede.subnets_publicas
+  sg_servicos         = module.rede.sg_servicos
+  imagem_api          = module.registro.repositorios["api"]
+  tag_api             = var.tag
+  cpu                 = var.api_cpu
+  memoria             = var.api_memoria
+  replicas_min        = var.api_replicas_min
+  replicas_max        = var.api_replicas_max
+  segredo_banco_arn   = module.dados.segredo_banco_arn
+  segredo_airflow_arn = module.dados.segredo_airflow_arn
+  bucket_dados_arn    = module.dados.bucket_dados_arn
+  log_group           = "/mvr/${var.ambiente}"
+  regiao              = var.regiao
 }
 
 module "lote" {

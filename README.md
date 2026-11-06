@@ -17,21 +17,22 @@ Serviços em contêiner orientados a eventos. As bases públicas entram pela DAG
 opera na VPS (ADR-0003), que as baixa, gera manifesto com sha256 e versão e as publica no S3; uma imagem nova em `imagens/` gera um evento no EventBridge que submete o job de detecção de
 edificações em Batch com GPU (EC2 Spot); o job de exposição cruza polígonos do SGB, Censo 2022 e detecções no PostGIS
 e produz a lista priorizada de visitas; a API em ECS Fargate, atrás de um ALB com health check, serve o app de campo
-offline, o painel da Compdec e a central de alertas. Dados pessoais só no RDS, em sub-rede privada e criptografado.
+offline, o painel da Compdec e a central de alertas. Dados pessoais só no Aurora Serverless v2 (PostGIS), em sub-rede privada e criptografado, que pausa em zero ACU quando ocioso.
 A entrega é pelo GitHub Actions com OIDC: push na `main` publica em dev, tag `vX.Y.Z` com aprovação publica em prod,
 tudo por Terraform com um tfvars por ambiente. O desenho é gerado por `docs/gerar_arquitetura.py` com os ícones
 oficiais da AWS.
 
 Detalhes: [docs/infra.md](docs/infra.md) (ambientes, fluxo de entrega, eventos, confiabilidade, governança),
 [docs/adr/0002-branches-tags-ambientes.md](docs/adr/0002-branches-tags-ambientes.md),
-[docs/adr/0003-airflow-existente-na-ingestao.md](docs/adr/0003-airflow-existente-na-ingestao.md) e `infra/terraform`.
+[docs/adr/0003-airflow-existente-na-ingestao.md](docs/adr/0003-airflow-existente-na-ingestao.md),
+[docs/adr/0004-aurora-serverless-e-modulo-rotinas.md](docs/adr/0004-aurora-serverless-e-modulo-rotinas.md) e `infra/terraform`.
 
 | pasta | serviço | estado |
 |---|---|---|
 | `servicos/ingestao` | catálogo de fontes, download, manifesto e publicação no S3; roda como tarefas do Airflow existente (`infra/airflow/dags/mvr_ingestao.py`) | funcional, com testes |
 | `servicos/exposicao` | cruzamento geométrico e estimativa por setor de risco (método BATER com Censo 2022) | esqueleto |
 | `servicos/deteccao` | inferência de segmentação de edificações sobre tiles dentro dos polígonos | esqueleto |
-| `servicos/api` | cadastro de famílias, lista de visitas, contatos por polígono | `GET /saude` |
+| `servicos/api` | cadastro de famílias, lista de visitas, contatos por polígono; módulo Rotinas (`/orquestracao`: DAGs, execuções, tarefas, logs e disparo, só `mvr_*`) | `/saude` e `/orquestracao` com testes |
 | `app` | aplicativo de campo offline (Expo) | planejado |
 | `painel` | painel da Compdec | planejado |
 | `infra` | Docker Compose local (PostGIS + API); Terraform com módulos rede, dados, registro, serviços, lote, observabilidade e cicd, ambientes dev e prod | validado, não aplicado |

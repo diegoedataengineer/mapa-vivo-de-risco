@@ -7,7 +7,7 @@
 | gatilho | push na `main` | tag `vX.Y.Z` + aprovação manual |
 | tag das imagens | `sha-<7>` | `vX.Y.Z` (e `sha-<7>`) |
 | API | 1 a 2 tarefas Fargate ARM, 0,25 vCPU | 2 a 6 tarefas, 0,5 vCPU, multi-AZ |
-| banco | RDS PostgreSQL 16 + PostGIS, t4g.micro, 1 dia de backup | t4g.medium, multi-AZ, 14 dias de backup, proteção contra exclusão |
+| banco | Aurora Serverless v2 PostgreSQL 16.6 + PostGIS, 0 a 2 ACU, pausa após 10 min ocioso, 1 instância, 1 dia de backup | 0 a 8 ACU, pausa após 30 min, 2 instâncias em AZs distintas, 14 dias de backup, proteção contra exclusão |
 | detecção | Batch em EC2 Spot com GPU, até 4 vCPU | até 16 vCPU |
 | logs | 14 dias | 90 dias |
 
@@ -30,7 +30,7 @@ Terraform cria no módulo `cicd`). Environments do GitHub: `dev` sem revisor, `p
 ## Terraform
 
 `infra/terraform/modules`: `rede` (VPC, sub-redes públicas para Fargate e Batch, privadas para o banco), `dados` (S3
-versionado com ciclo de vida, RDS, segredo), `registro` (ECR imutável com expiração), `servicos` (cluster ECS, API com ALB,
+versionado com ciclo de vida, Aurora Serverless v2, segredos do banco e do Airflow), `registro` (ECR imutável com expiração), `servicos` (cluster ECS, API com ALB,
 autoescala, circuit breaker), `lote` (Batch CPU em Fargate Spot e GPU em EC2 Spot, EventBridge de imagem nova para job
 de detecção), `orquestrador` (usuário IAM mínimo para o Airflow da VPS), `observabilidade` (log group, alarmes de 5xx, latência p95, tarefas saudáveis, CPU do banco, job falho,
 SNS por e-mail), `cicd` (provedor OIDC e role por ambiente). `envs/dev` e `envs/prod` compõem os módulos com o mesmo
@@ -57,7 +57,7 @@ volte sozinho.
 
 ## Governança de dados na infra
 
-Dados pessoais só no RDS (criptografado, sub-rede privada, acesso só do security group dos serviços); S3 sem acesso
+Dados pessoais só no Aurora (criptografado, sub-rede privada, acesso só do security group dos serviços); S3 sem acesso
 público, versionado, com imagens frias após 90 dias e tiles temporários expirando em 30; segredo do banco no Secrets
 Manager, lido pela tarefa, nunca em variável de ambiente em texto; tags `dados_pessoais` e `lgpd` no banco para
 inventário; trilha de auditoria da aplicação no PostgreSQL e dos acessos à AWS no CloudTrail (a ligar no bootstrap).
@@ -68,3 +68,11 @@ inventário; trilha de auditoria da aplicação no PostgreSQL e dos acessos à A
 python -m venv .venv-diag && .venv-diag/bin/pip install diagrams pillow
 .venv-diag/bin/python docs/gerar_arquitetura.py   # escreve docs/arquitetura.png com os ícones oficiais da AWS
 ```
+
+## Módulo Rotinas (DAGs e logs no sistema)
+
+A API expõe `/orquestracao/dags`, `/orquestracao/dags/{id}/execucoes`, `.../tarefas`, `.../tarefas/{tarefa}/log` e
+`POST /orquestracao/dags/{id}/executar`, consumindo a API REST do Airflow 3 com a credencial de serviço do segredo
+`mvr/<ambiente>/airflow` (url, usuario, senha). Só DAGs com prefixo `mvr_` existem para o módulo. O painel mostra isso
+como a tela do Airflow: lista de rotinas, histórico de execuções com estado, tarefas da execução e o log de cada uma,
+mais o botão de executar com parâmetros (UFs, municípios).

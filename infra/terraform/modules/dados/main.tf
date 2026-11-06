@@ -4,8 +4,10 @@ variable "nome" { type = string }
 variable "ambiente" { type = string }
 variable "subnets_privadas" { type = list(string) }
 variable "sg_banco" { type = string }
-variable "banco_classe" { type = string }
-variable "banco_multi_az" { type = bool }
+variable "banco_acu_min" { type = number } # 0 = pausa quando ocioso (Aurora Serverless v2, PostgreSQL 16.3+)
+variable "banco_acu_max" { type = number }
+variable "banco_pausa_segundos" { type = number } # ociosidade até pausar (mínimo 300)
+variable "banco_instancias" { type = number }     # 1 em dev; 2 em prod (writer + reader em outra AZ)
 variable "retencao_backup_dias" { type = number }
 
 resource "aws_s3_bucket" "dados" {
@@ -66,7 +68,7 @@ resource "aws_secretsmanager_secret_version" "banco" {
   secret_string = jsonencode({
     username = "mvr"
     password = random_password.banco.result
-    host     = aws_db_instance.banco.address
+    host     = aws_rds_cluster.banco.endpoint
     port     = 5432
     dbname   = "mvr"
   })
@@ -77,28 +79,57 @@ resource "aws_db_subnet_group" "banco" {
   subnet_ids = var.subnets_privadas
 }
 
-resource "aws_db_instance" "banco" {
-  identifier                   = "${var.nome}-${var.ambiente}"
-  engine                       = "postgres"
-  engine_version               = "16"
-  instance_class               = var.banco_classe
-  allocated_storage            = 50
-  max_allocated_storage        = 500
-  db_name                      = "mvr"
-  username                     = "mvr"
-  password                     = random_password.banco.result
-  db_subnet_group_name         = aws_db_subnet_group.banco.name
-  vpc_security_group_ids       = [var.sg_banco]
-  multi_az                     = var.banco_multi_az
-  storage_encrypted            = true
-  backup_retention_period      = var.retencao_backup_dias
-  deletion_protection          = var.ambiente == "prod"
-  skip_final_snapshot          = var.ambiente != "prod"
+# Aurora Serverless v2: escala por ACU entre o mínimo e o máximo e, com mínimo 0, pausa depois do tempo de
+# ociosidade e cobra só armazenamento. Retomada em segundos na primeira conexão: a API trata o primeiro erro
+# com retry. PostGIS é extensão nativa do Aurora PostgreSQL.
+resource "aws_rds_cluster" "banco" {
+  cluster_identifier              = "${var.nome}-${var.ambiente}"
+  engine                          = "aurora-postgresql"
+  engine_mode                     = "provisioned"
+  engine_version                  = "16.6"
+  database_name                   = "mvr"
+  master_username                 = "mvr"
+  master_password                 = random_password.banco.result
+  db_subnet_group_name            = aws_db_subnet_group.banco.name
+  vpc_security_group_ids          = [var.sg_banco]
+  storage_encrypted               = true
+  backup_retention_period         = var.retencao_backup_dias
+  deletion_protection             = var.ambiente == "prod"
+  skip_final_snapshot             = var.ambiente != "prod"
+  final_snapshot_identifier       = var.ambiente == "prod" ? "${var.nome}-${var.ambiente}-final" : null
+  enabled_cloudwatch_logs_exports = ["postgresql"]
+  serverlessv2_scaling_configuration {
+    min_capacity             = var.banco_acu_min
+    max_capacity             = var.banco_acu_max
+    seconds_until_auto_pause = var.banco_acu_min == 0 ? var.banco_pausa_segundos : null
+  }
+  tags = { dados_pessoais = "sim", lgpd = "controlador=municipio;operador=mvr" }
+}
+
+resource "aws_rds_cluster_instance" "banco" {
+  count                        = var.banco_instancias
+  identifier                   = "${var.nome}-${var.ambiente}-${count.index}"
+  cluster_identifier           = aws_rds_cluster.banco.id
+  instance_class               = "db.serverless"
+  engine                       = aws_rds_cluster.banco.engine
+  engine_version               = aws_rds_cluster.banco.engine_version
   performance_insights_enabled = true
-  tags                         = { dados_pessoais = "sim", lgpd = "controlador=municipio;operador=mvr" }
+}
+
+# credencial de serviço do Airflow para o módulo Rotinas da API (valor preenchido à mão depois de criar o usuário no Airflow)
+resource "aws_secretsmanager_secret" "airflow" {
+  name = "${var.nome}/${var.ambiente}/airflow"
+}
+
+resource "aws_secretsmanager_secret_version" "airflow" {
+  secret_id     = aws_secretsmanager_secret.airflow.id
+  secret_string = jsonencode({ url = "https://airflow.exemplo", usuario = "mvr", senha = "troque-me" })
+  lifecycle { ignore_changes = [secret_string] }
 }
 
 output "bucket_dados" { value = aws_s3_bucket.dados.bucket }
 output "bucket_dados_arn" { value = aws_s3_bucket.dados.arn }
 output "segredo_banco_arn" { value = aws_secretsmanager_secret.banco.arn }
-output "banco_endpoint" { value = aws_db_instance.banco.address }
+output "banco_endpoint" { value = aws_rds_cluster.banco.endpoint }
+output "banco_cluster" { value = aws_rds_cluster.banco.cluster_identifier }
+output "segredo_airflow_arn" { value = aws_secretsmanager_secret.airflow.arn }
