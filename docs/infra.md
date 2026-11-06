@@ -20,6 +20,9 @@ feature/x ──PR──▶ main ──push──▶ ci ──▶ deploy-dev (im
 PR em infra/ ──▶ terraform-plan (comenta o plan de dev no PR)
 ```
 
+Os workflows que tocam a AWS (`deploy-dev`, `release`, `terraform-plan`) só rodam quando a variável de repositório
+`DEPLOY_ATIVO` for `true`; até o bootstrap da conta eles aparecem como pulados, não como falha.
+
 Workflows em `.github/workflows`: `ci.yml`, `publicar-imagens.yml` (reutilizável), `deploy-dev.yml`, `release.yml`,
 `terraform-plan.yml`. Segredos do repositório: `AWS_ROLE_ARN_DEV` e `AWS_ROLE_ARN_PROD` (ARNs das roles que o
 Terraform cria no módulo `cicd`). Environments do GitHub: `dev` sem revisor, `prod` com revisor obrigatório.

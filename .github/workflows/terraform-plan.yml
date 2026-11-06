@@ -6,6 +6,7 @@ on:
     paths: ["infra/terraform/**"]
 jobs:
   plan-dev:
+    if: vars.DEPLOY_ATIVO == 'true'
     runs-on: ubuntu-latest
     environment: dev
     permissions:

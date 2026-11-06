@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   tag:
+    if: vars.DEPLOY_ATIVO == 'true'   # liga depois do bootstrap da AWS (infra/terraform/bootstrap.md)
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.t.outputs.tag }}
@@ -18,6 +19,9 @@ jobs:
         run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
   imagens:
     needs: tag
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/publicar-imagens.yml
     with:
       ambiente: dev

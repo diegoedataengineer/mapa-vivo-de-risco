@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   confere:
+    if: vars.DEPLOY_ATIVO == 'true'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.t.outputs.tag }}
@@ -22,6 +23,9 @@ jobs:
         run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
   imagens:
     needs: confere
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/publicar-imagens.yml
     with:
       ambiente: prod

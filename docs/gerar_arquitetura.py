@@ -110,14 +110,14 @@ icone("aws/compute", "ec2-spot-instance", X4, Y1, "Batch · detecção (GPU)", "
 icone("aws/compute", "batch", X1, Y2, "Batch · exposição", "SGB × Censo × detecções, lista de visitas")
 icone("aws/database", "rds-postgresql-instance", X2, Y2, "RDS PostgreSQL + PostGIS", "sub-rede privada, criptografado, multi-AZ em prod")
 icone("aws/security", "secrets-manager", X3, Y2, "Secrets Manager", "credencial do banco")
-icone("aws/management", "cloudtrail", X4, Y2, "CloudTrail", "auditoria de acesso")
+icone("aws/management", "cloudtrail", 1470, Y2, "CloudTrail", "auditoria de acesso")
 
 icone("aws/network", "elb-application-load-balancer", X1, Y3, "ALB", "health check em /saude")
 icone("aws/compute", "fargate", X2, Y3, "ECS Fargate · API", "FastAPI, autoescala, rollback automático")
 icone("aws/management", "cloudwatch", X3, Y3, "CloudWatch", "logs e alarmes: 5xx, p95, tarefas saudáveis")
 icone("aws/integration", "simple-notification-service-sns", X4, Y3, "SNS", "alertas por e-mail")
 
-icone("aws/security", "identity-and-access-management-iam", 1260, Y4, "IAM", "uma role por tarefa, mínimo privilégio")
+icone("aws/security", "identity-and-access-management-iam", 1295, Y2, "IAM", "role por tarefa")
 
 # município (direita)
 caixa(1620, 120, 1960, 1120, "Município", VERDE, tracejada=True)
@@ -155,7 +155,7 @@ seta([(X2, Y3 + 72), (X2, 950), (1560, 950), (1560, 740), (1740, 740)], "contato
 seta([(1790, 790), (1790, 930)], "alerta nominal")
 # CI/CD -> ECR -> serviços
 seta([(315, 900), (380, 900), (380, 1075), (X2, 1075), (X2, Y3 + 110)], "imagem por tag", cor=ROXO, pont=True, onde=2)
-seta([(380, 1075), (1500, 1075), (1500, Y1 + 160), (X4, Y1 + 160), (X4, Y1 + 72)], cor=ROXO, pont=True)
+seta([(380, 1075), (1535, 1075), (1535, Y1 + 160), (X4, Y1 + 160), (X4, Y1 + 72)], cor=ROXO, pont=True)
 
 img.save(SAIDA, optimize=True)
 print(SAIDA, img.size)
