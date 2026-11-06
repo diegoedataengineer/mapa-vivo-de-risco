@@ -84,25 +84,29 @@ d.text((W / 2, 68), "serviços em contêiner orientados a eventos · dados pesso
 X1, X2, X3, X4 = 560, 840, 1120, 1400
 Y1, Y2, Y3, Y4 = 260, 540, 820, 975
 
-# bases públicas (esquerda, em cima)
+# bases públicas (esquerda, em cima), uma por linha
 caixa(40, 120, 340, 600, "Bases públicas", VERDE, tracejada=True)
-icone("aws/general", "internet-alt1", 190, 215, "SGB/CPRM e Cemaden", "polígonos de risco")
-icone("aws/general", "internet-alt1", 190, 365, "IBGE, Censo 2022", "setores e endereços (CNEFE)")
-icone("aws/general", "internet-alt1", 190, 515, "Imagem de satélite", "ortofoto recente, em tiles")
+icone("aws/general", "internet-alt1", 190, 200, "SGB/CPRM", "polígonos de risco")
+icone("aws/general", "internet-alt1", 190, 310, "Cemaden", "municípios monitorados")
+icone("aws/general", "internet-alt1", 190, 420, "IBGE, Censo 2022", "setores, CNEFE, agregados")
+icone("aws/general", "internet-alt1", 190, 530, "Imagem de satélite", "ortofoto em tiles")
+
+# orquestração fora da AWS
+caixa(40, 615, 340, 775, "Orquestração (VPS existente)", AZUL, tracejada=True)
+icone("onprem/workflow", "airflow", 190, 690, "Airflow", "DAG mvr_ingestao, mensal ou botão")
 
 # entrega contínua (esquerda, embaixo)
-caixa(40, 640, 340, 1120, "Entrega contínua", ROXO, tracejada=True)
-icone("onprem/vcs", "github", 110, 730, "GitHub", "main, tags vX.Y.Z")
-icone("onprem/ci", "github-actions", 275, 730, "Actions", "ci · dev · release")
-icone("aws/security", "identity-and-access-management-iam-role", 110, 900, "Role OIDC", "uma por ambiente")
-icone("aws/compute", "ec2-container-registry", 275, 900, "ECR", "tags imutáveis")
-d.text((190, 1030), "Terraform: dev no push da main;\nprod só por tag com aprovação", fill=ROXO, font=F["p"], anchor="ma", align="center")
+caixa(40, 790, 340, 1120, "Entrega contínua", ROXO, tracejada=True)
+icone("onprem/vcs", "github", 110, 870, "GitHub", "main, tags vX.Y.Z")
+icone("onprem/ci", "github-actions", 275, 870, "Actions", "ci · dev · release")
+icone("aws/security", "identity-and-access-management-iam-role", 110, 1010, "Role OIDC", "uma por ambiente")
+icone("aws/compute", "ec2-container-registry", 275, 1010, "ECR", "tags imutáveis")
 
 # nuvem
 caixa(380, 120, 1580, 1120, "AWS · us-east-1 · mesmo código, um tfvars por ambiente (dev, prod)", LARANJA)
 caixa(410, 160, 1550, 1095, "VPC", AZUL, tracejada=True)
 
-icone("aws/compute", "batch", X1, Y1, "Batch · ingestão", "Fargate Spot: baixa e versiona as bases")
+icone("aws/security", "identity-and-access-management-iam-role", X1, Y1, "Usuário IAM do Airflow", "só S3 bases/ e imagens/, Batch SubmitJob")
 icone("aws/storage", "simple-storage-service-s3", X2, Y1, "S3 dados", "bases, imagens, Parquet, detecções")
 icone("aws/integration", "eventbridge", X3, Y1, "EventBridge", "Object Created em imagens/")
 icone("aws/compute", "ec2-spot-instance", X4, Y1, "Batch · detecção (GPU)", "EC2 Spot: segmentação por tile, U-Net")
@@ -128,17 +132,17 @@ icone("aws/general", "user", 1790, 980, "Famílias", "alerta nominal e rota de s
 
 m = ICONE / 2 + 6
 # fontes -> ingestão (linha horizontal em Y1 vem das três fontes por um tronco vertical em x=400)
-seta([(250, 215), (400, 215), (400, Y1), (X1 - m, Y1)], "baixa e versiona", onde=0)
-seta([(250, 365), (400, 365), (400, Y1)])
-seta([(250, 515), (400, 515), (400, Y1)])
+seta([(190, 600), (190, 690 - m)], "baixa")
+seta([(250, 690), (400, 690), (400, Y1), (X1 - m, Y1)], "versiona", onde=0)
 # ingestão -> S3 -> EventBridge -> Batch GPU
 seta([(X1 + m, Y1), (X2 - m, Y1)])
+seta([(X1 - 30, Y1 + 72), (X1 - 30, Y2 - m)], "submete a exposição", onde=0)
 seta([(X2 + m, Y1), (X3 - m, Y1)], "evento")
 seta([(X3 + m, Y1), (X4 - m, Y1)], "submete job")
 # detecções voltam ao S3 (por baixo)
 seta([(X4, Y1 + 72), (X4, Y1 + 130), (X2 + 40, Y1 + 130), (X2 + 40, Y1 + 72)], "detecções em S3", pont=True, onde=1)
 # S3 -> exposição (L) e exposição -> RDS
-seta([(X2 - 40, Y1 + 72), (X2 - 40, Y1 + 150), (X1, Y1 + 150), (X1, Y2 - m)], "lê bases e detecções", onde=1)
+seta([(X2 - 40, Y1 + 72), (X2 - 40, Y1 + 150), (X1 + 60, Y1 + 150), (X1 + 60, Y2 - m)], "lê bases e detecções", onde=1)
 seta([(X1 + m, Y2), (X2 - m, Y2)], "grava exposição")
 # segredo -> RDS/API
 seta([(X3 - m, Y2), (X2 + m, Y2)], "credencial", pont=True)
@@ -154,7 +158,7 @@ seta([(1740, 500), (1600, 500)])
 seta([(X2, Y3 + 72), (X2, 950), (1560, 950), (1560, 740), (1740, 740)], "contatos por polígono atingido", onde=1)
 seta([(1790, 790), (1790, 930)], "alerta nominal")
 # CI/CD -> ECR -> serviços
-seta([(315, 900), (380, 900), (380, 1075), (X2, 1075), (X2, Y3 + 110)], "imagem por tag", cor=ROXO, pont=True, onde=2)
+seta([(315, 1010), (380, 1010), (380, 1075), (X2, 1075), (X2, Y3 + 110)], "imagem por tag", cor=ROXO, pont=True, onde=2)
 seta([(380, 1075), (1535, 1075), (1535, Y1 + 160), (X4, Y1 + 160), (X4, Y1 + 72)], cor=ROXO, pont=True)
 
 img.save(SAIDA, optimize=True)

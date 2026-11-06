@@ -13,8 +13,8 @@ novembro de 2026); produto independente da carteira de Defesa Civil para prefeit
 
 ![Arquitetura do Mapa Vivo de Risco na AWS](docs/arquitetura.png)
 
-Serviços em contêiner orientados a eventos. As bases públicas entram por um job de ingestão em AWS Batch (Fargate Spot)
-e ficam versionadas no S3; uma imagem nova em `imagens/` gera um evento no EventBridge que submete o job de detecção de
+Serviços em contêiner orientados a eventos. As bases públicas entram pela DAG `mvr_ingestao` do Airflow que a empresa já
+opera na VPS (ADR-0003), que as baixa, gera manifesto com sha256 e versão e as publica no S3; uma imagem nova em `imagens/` gera um evento no EventBridge que submete o job de detecção de
 edificações em Batch com GPU (EC2 Spot); o job de exposição cruza polígonos do SGB, Censo 2022 e detecções no PostGIS
 e produz a lista priorizada de visitas; a API em ECS Fargate, atrás de um ALB com health check, serve o app de campo
 offline, o painel da Compdec e a central de alertas. Dados pessoais só no RDS, em sub-rede privada e criptografado.
@@ -23,11 +23,12 @@ tudo por Terraform com um tfvars por ambiente. O desenho é gerado por `docs/ger
 oficiais da AWS.
 
 Detalhes: [docs/infra.md](docs/infra.md) (ambientes, fluxo de entrega, eventos, confiabilidade, governança),
-[docs/adr/0002-branches-tags-ambientes.md](docs/adr/0002-branches-tags-ambientes.md) e `infra/terraform`.
+[docs/adr/0002-branches-tags-ambientes.md](docs/adr/0002-branches-tags-ambientes.md),
+[docs/adr/0003-airflow-existente-na-ingestao.md](docs/adr/0003-airflow-existente-na-ingestao.md) e `infra/terraform`.
 
 | pasta | serviço | estado |
 |---|---|---|
-| `servicos/ingestao` | baixa e versiona SGB, Cemaden, Censo 2022 (setores e CNEFE) e imagens | esqueleto |
+| `servicos/ingestao` | catálogo de fontes, download, manifesto e publicação no S3; roda como tarefas do Airflow existente (`infra/airflow/dags/mvr_ingestao.py`) | funcional, com testes |
 | `servicos/exposicao` | cruzamento geométrico e estimativa por setor de risco (método BATER com Censo 2022) | esqueleto |
 | `servicos/deteccao` | inferência de segmentação de edificações sobre tiles dentro dos polígonos | esqueleto |
 | `servicos/api` | cadastro de famílias, lista de visitas, contatos por polígono | `GET /saude` |

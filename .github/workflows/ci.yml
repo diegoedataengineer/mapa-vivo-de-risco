@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        servico: [api]   # ingestao, exposicao e deteccao entram quando tiverem pyproject
+        servico: [api, ingestao]   # exposicao e deteccao entram quando tiverem pyproject
     defaults:
       run:
         working-directory: servicos/${{ matrix.servico }}
@@ -28,7 +28,8 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
-      - run: docker build -t mvr-${{ matrix.servico }}:${{ github.sha }} .
+      - if: matrix.servico != 'ingestao'   # ingestão roda no Airflow, não tem imagem
+        run: docker build -t mvr-${{ matrix.servico }}:${{ github.sha }} .
   terraform:
     runs-on: ubuntu-latest
     steps:

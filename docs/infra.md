@@ -32,7 +32,7 @@ Terraform cria no módulo `cicd`). Environments do GitHub: `dev` sem revisor, `p
 `infra/terraform/modules`: `rede` (VPC, sub-redes públicas para Fargate e Batch, privadas para o banco), `dados` (S3
 versionado com ciclo de vida, RDS, segredo), `registro` (ECR imutável com expiração), `servicos` (cluster ECS, API com ALB,
 autoescala, circuit breaker), `lote` (Batch CPU em Fargate Spot e GPU em EC2 Spot, EventBridge de imagem nova para job
-de detecção), `observabilidade` (log group, alarmes de 5xx, latência p95, tarefas saudáveis, CPU do banco, job falho,
+de detecção), `orquestrador` (usuário IAM mínimo para o Airflow da VPS), `observabilidade` (log group, alarmes de 5xx, latência p95, tarefas saudáveis, CPU do banco, job falho,
 SNS por e-mail), `cicd` (provedor OIDC e role por ambiente). `envs/dev` e `envs/prod` compõem os módulos com o mesmo
 `main.tf` e tfvars próprios; estado remoto em S3 com lock no DynamoDB (`bootstrap.md`).
 
@@ -41,8 +41,9 @@ Regra de operação: `terraform plan -out` sempre, `apply` do arquivo; nunca app
 ## Eventos
 
 ```
+Airflow (VPS) ──mensal ou botão──▶ S3 bases/<fonte>/<versao>/ + manifest.json ──▶ Batch (CPU): exposicao, um job por município
 S3 imagens/<municipio>/<data>.tif  ──Object Created──▶ EventBridge ──▶ Batch (GPU): deteccao ──▶ S3 deteccoes/ + PostGIS
-Batch (CPU): exposicao  ◀── API ou agenda ── cruza SGB × Censo 2022 × detecções → lista de visitas
+Batch (CPU): exposicao  ◀── Airflow ao fim da ingestão, ou a API sob demanda ── cruza SGB × Censo 2022 × detecções → lista de visitas
 Batch FAILED ──▶ EventBridge ──▶ SNS ──▶ e-mail
 ```
 

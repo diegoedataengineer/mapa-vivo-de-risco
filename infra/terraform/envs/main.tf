@@ -37,7 +37,7 @@ variable "github_dono_id" { type = string }
 variable "criar_provedor_oidc" { type = bool }
 variable "bucket_estado_arn" { type = string }
 
-locals { servicos = ["api", "ingestao", "exposicao", "deteccao"] }
+locals { servicos = ["api", "exposicao", "deteccao"] } # a ingestão roda no Airflow existente, fora da AWS (ADR-0003)
 
 module "rede" {
   source = "../../modules/rede"
@@ -121,7 +121,21 @@ module "cicd" {
   bucket_estado_arn    = var.bucket_estado_arn
 }
 
+module "orquestrador" {
+  source            = "../../modules/orquestrador"
+  nome              = var.nome
+  ambiente          = var.ambiente
+  bucket_dados_arn  = module.dados.bucket_dados_arn
+  fila_cpu_arn      = module.lote.fila_cpu
+  job_exposicao_arn = module.lote.job_exposicao
+}
+
 output "api_url" { value = "http://${module.servicos.alb_dns}" }
+output "airflow_chave_id" { value = module.orquestrador.chave_id }
+output "airflow_chave_segredo" {
+  value     = module.orquestrador.chave_segredo
+  sensitive = true
+}
 output "cluster" { value = module.servicos.cluster }
 output "bucket_dados" { value = module.dados.bucket_dados }
 output "repositorios" { value = module.registro.repositorios }
