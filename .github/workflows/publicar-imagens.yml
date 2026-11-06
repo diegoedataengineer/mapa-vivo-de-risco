@@ -1,0 +1,46 @@
+# Workflow reutilizável: constrói e publica no ECR a imagem de cada serviço com a tag recebida (sha-<7> ou vX.Y.Z),
+# mais a tag do sha sempre, para rastrear qualquer imagem de volta ao commit (item de configuração = imagem + sha).
+name: publicar-imagens
+on:
+  workflow_call:
+    inputs:
+      ambiente:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+jobs:
+  imagens:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ambiente }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        servico: [api]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: servicos/${{ matrix.servico }}
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/mvr/${{ matrix.servico }}:${{ inputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/mvr/${{ matrix.servico }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ inputs.tag }}

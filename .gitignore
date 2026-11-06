@@ -13,3 +13,4 @@ dist/
 .terraform/
 *.tfstate*
 .DS_Store
+.venv-diag/

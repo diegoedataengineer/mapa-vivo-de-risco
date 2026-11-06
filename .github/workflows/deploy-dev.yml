@@ -1,0 +1,54 @@
+# Entrega contínua em dev: todo push na main (depois do CI verde) publica as imagens com sha-<7> e aplica o Terraform
+# de dev com essa tag. Sem aprovação manual: dev é descartável.
+name: deploy-dev
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - id: t
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+  imagens:
+    needs: tag
+    uses: ./.github/workflows/publicar-imagens.yml
+    with:
+      ambiente: dev
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_DEV }}
+  terraform:
+    needs: [tag, imagens]
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - run: terraform init -input=false -backend-config=backend.hcl
+      - run: terraform plan -input=false -out=plano.tfplan -var "tag=${{ needs.tag.outputs.tag }}"
+      - run: terraform apply -input=false plano.tfplan
+      - name: espera o serviço estabilizar
+        run: aws ecs wait services-stable --cluster mvr-dev --services api
+      - name: fumaça
+        run: |
+          url=$(terraform output -raw api_url)
+          curl -fsS "$url/saude"

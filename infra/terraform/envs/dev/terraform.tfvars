@@ -1,0 +1,21 @@
+nome                  = "mvr"
+ambiente              = "dev"
+regiao                = "us-east-1"
+cidr                  = "10.20.0.0/16"
+zonas                 = ["us-east-1a", "us-east-1b"]
+tag                   = "sha-0000000" # o pipeline sobrescreve com -var tag=sha-<7>
+api_cpu               = 256
+api_memoria           = 512
+api_replicas_min      = 1
+api_replicas_max      = 2
+banco_classe          = "db.t4g.micro"
+banco_multi_az        = false
+retencao_backup_dias  = 1
+retencao_logs_dias    = 14
+gpu_max_vcpus         = 4
+email_alertas         = "alertas@exemplo.gov.br"
+github_repositorio    = "diegoedataengineer/mapa-vivo-de-risco"
+github_repositorio_id = "0" # preencher com `gh api repos/diegoedataengineer/mapa-vivo-de-risco --jq .id`
+github_dono_id        = "0" # `gh api users/diegoedataengineer --jq .id`
+criar_provedor_oidc   = true
+bucket_estado_arn     = "arn:aws:s3:::mvr-terraform-estado"

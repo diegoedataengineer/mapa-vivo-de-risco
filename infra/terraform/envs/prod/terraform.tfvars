@@ -1,0 +1,21 @@
+nome                  = "mvr"
+ambiente              = "prod"
+regiao                = "us-east-1"
+cidr                  = "10.30.0.0/16"
+zonas                 = ["us-east-1a", "us-east-1b"]
+tag                   = "v0.0.0" # o pipeline de release passa -var tag=vX.Y.Z
+api_cpu               = 512
+api_memoria           = 1024
+api_replicas_min      = 2
+api_replicas_max      = 6
+banco_classe          = "db.t4g.medium"
+banco_multi_az        = true
+retencao_backup_dias  = 14
+retencao_logs_dias    = 90
+gpu_max_vcpus         = 16
+email_alertas         = "alertas@exemplo.gov.br"
+github_repositorio    = "diegoedataengineer/mapa-vivo-de-risco"
+github_repositorio_id = "0"
+github_dono_id        = "0"
+criar_provedor_oidc   = false # o provedor OIDC é um por conta; dev já criou
+bucket_estado_arn     = "arn:aws:s3:::mvr-terraform-estado"

@@ -1,20 +1,44 @@
+# Integração contínua: roda em todo PR e em todo push na main. Lint, testes e build de cada serviço, mais
+# formatação e validação do Terraform. Nada aqui toca a AWS.
 name: ci
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  api:
+  servicos:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        servico: [api]   # ingestao, exposicao e deteccao entram quando tiverem pyproject
     defaults:
       run:
-        working-directory: servicos/api
+        working-directory: servicos/${{ matrix.servico }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
       - run: pip install -q ".[dev]"
       - run: ruff check .
+      - run: ruff format --check .
       - run: pytest -q
-      - run: docker build -t mvr-api:${{ github.sha }} .
+      - run: docker build -t mvr-${{ matrix.servico }}:${{ github.sha }} .
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - run: terraform fmt -check -recursive infra/terraform
+      - name: validate dev e prod
+        run: |
+          for e in dev prod; do
+            (cd infra/terraform/envs/$e && terraform init -backend=false -input=false && terraform validate)
+          done

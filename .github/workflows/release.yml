@@ -1,0 +1,59 @@
+# Release em prod: uma tag vX.Y.Z (semver) na main dispara build das imagens com essa tag, plan de prod com a
+# tag e apply só depois da aprovação manual do environment "prod" no GitHub. Rollback = re-rodar com a tag anterior.
+name: release
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  confere:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: a tag precisa apontar para um commit da main
+        run: git branch -r --contains "${GITHUB_SHA}" | grep -q "origin/main"
+      - id: t
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+  imagens:
+    needs: confere
+    uses: ./.github/workflows/publicar-imagens.yml
+    with:
+      ambiente: prod
+      tag: ${{ needs.confere.outputs.tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_PROD }}
+  terraform:
+    needs: [confere, imagens]
+    runs-on: ubuntu-latest
+    environment: prod   # exige aprovação de revisor configurada no repositório
+    permissions:
+      id-token: write
+      contents: write
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - run: terraform init -input=false -backend-config=backend.hcl
+      - run: terraform plan -input=false -out=plano.tfplan -var "tag=${{ needs.confere.outputs.tag }}"
+      - run: terraform apply -input=false plano.tfplan
+      - run: aws ecs wait services-stable --cluster mvr-prod --services api
+      - name: fumaça
+        run: curl -fsS "$(terraform output -raw api_url)/saude"
+      - name: release no GitHub com as notas do changelog
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
