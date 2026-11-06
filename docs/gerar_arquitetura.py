@@ -14,7 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 RES = Path(importlib.util.find_spec("diagrams").origin).parent.parent / "resources"
 SAIDA = Path(__file__).with_name("arquitetura.png")
-W, H = 2000, 1240
+W, H = 2120, 1240
+DX = 120  # deslocamento de tudo que fica à direita da coluna de bases e entrega
 ICONE = 76
 F = {}
 for nome, tam in (("t", 32), ("g", 22), ("n", 18), ("p", 15)):
@@ -81,30 +82,31 @@ d.text((W / 2, 26), "Mapa Vivo de Risco — arquitetura na AWS", fill="black", f
 d.text((W / 2, 68), "serviços em contêiner orientados a eventos · dados pessoais só no PostGIS · o modelo diz onde olhar, o cadastro é humano", fill=CINZA, font=F["n"], anchor="ma")
 
 # colunas e linhas da grade
-X1, X2, X3, X4 = 560, 840, 1120, 1400
+X1, X2, X3, X4 = 680, 960, 1240, 1520
 Y1, Y2, Y3, Y4 = 260, 540, 820, 975
 
-# bases públicas (esquerda, em cima), uma por linha
-caixa(40, 120, 340, 600, "Bases públicas", VERDE, tracejada=True)
-icone("aws/general", "internet-alt1", 190, 200, "SGB/CPRM", "polígonos de risco")
-icone("aws/general", "internet-alt1", 190, 310, "Cemaden", "municípios monitorados")
-icone("aws/general", "internet-alt1", 190, 420, "IBGE, Censo 2022", "setores, CNEFE, agregados")
-icone("aws/general", "internet-alt1", 190, 530, "Imagem de satélite", "ortofoto em tiles")
+# bases públicas (esquerda, em cima), em duas colunas
+caixa(40, 120, 460, 500, "Bases públicas", VERDE, tracejada=True)
+icone("aws/general", "internet-alt1", 150, 210, "SGB/CPRM", "polígonos de risco")
+icone("aws/general", "internet-alt1", 350, 210, "Cemaden", "municípios monitorados")
+icone("aws/general", "internet-alt1", 150, 370, "IBGE, Censo 2022", "setores, CNEFE, agregados")
+icone("aws/general", "internet-alt1", 350, 370, "Imagem de satélite", "ortofoto em tiles")
 
 # orquestração fora da AWS
-caixa(40, 615, 340, 775, "Orquestração (VPS existente)", AZUL, tracejada=True)
-icone("onprem/workflow", "airflow", 190, 690, "Airflow", "DAG mvr_ingestao, mensal ou botão")
+caixa(40, 525, 460, 705, "Orquestração", AZUL, tracejada=True)
+icone("onprem/workflow", "airflow", 350, 610, "Airflow (VPS existente)", "DAG mvr_ingestao, mensal ou botão")
 
 # entrega contínua (esquerda, embaixo)
-caixa(40, 790, 340, 1120, "Entrega contínua", ROXO, tracejada=True)
-icone("onprem/vcs", "github", 110, 870, "GitHub", "main, tags vX.Y.Z")
-icone("onprem/ci", "github-actions", 275, 870, "Actions", "ci · dev · release")
-icone("aws/security", "identity-and-access-management-iam-role", 110, 1010, "Role OIDC", "uma por ambiente")
-icone("aws/compute", "ec2-container-registry", 275, 1010, "ECR", "tags imutáveis")
+caixa(40, 725, 460, 1120, "Entrega contínua", ROXO, tracejada=True)
+icone("onprem/vcs", "github", 150, 810, "GitHub", "main, tags vX.Y.Z")
+icone("onprem/ci", "github-actions", 350, 810, "Actions", "ci · deploy-dev · release")
+icone("aws/security", "identity-and-access-management-iam-role", 150, 960, "Role OIDC", "uma por ambiente")
+icone("aws/compute", "ec2-container-registry", 350, 960, "ECR", "tags imutáveis sha-7, vX.Y.Z")
+d.text((250, 1060), "Terraform: dev no push da main;\nprod só por tag com aprovação", fill=ROXO, font=F["p"], anchor="ma", align="center")
 
 # nuvem
-caixa(380, 120, 1580, 1120, "AWS · us-east-1 · mesmo código, um tfvars por ambiente (dev, prod)", LARANJA)
-caixa(410, 160, 1550, 1095, "VPC", AZUL, tracejada=True)
+caixa(500, 120, 1700, 1120, "AWS · us-east-1 · mesmo código, um tfvars por ambiente (dev, prod)", LARANJA)
+caixa(530, 160, 1670, 1095, "VPC", AZUL, tracejada=True)
 
 icone("aws/security", "identity-and-access-management-iam-role", X1, Y1, "Usuário IAM do Airflow", "só S3 bases/ e imagens/, Batch SubmitJob")
 icone("aws/storage", "simple-storage-service-s3", X2, Y1, "S3 dados", "bases, imagens, Parquet, detecções")
@@ -114,26 +116,26 @@ icone("aws/compute", "ec2-spot-instance", X4, Y1, "Batch · detecção (GPU)", "
 icone("aws/compute", "batch", X1, Y2, "Batch · exposição", "SGB × Censo × detecções, lista de visitas")
 icone("aws/database", "rds-postgresql-instance", X2, Y2, "RDS PostgreSQL + PostGIS", "sub-rede privada, criptografado, multi-AZ em prod")
 icone("aws/security", "secrets-manager", X3, Y2, "Secrets Manager", "credencial do banco")
-icone("aws/management", "cloudtrail", 1470, Y2, "CloudTrail", "auditoria de acesso")
+icone("aws/management", "cloudtrail", 1590, Y2, "CloudTrail", "auditoria de acesso")
 
 icone("aws/network", "elb-application-load-balancer", X1, Y3, "ALB", "health check em /saude")
 icone("aws/compute", "fargate", X2, Y3, "ECS Fargate · API", "FastAPI, autoescala, rollback automático")
 icone("aws/management", "cloudwatch", X3, Y3, "CloudWatch", "logs e alarmes: 5xx, p95, tarefas saudáveis")
 icone("aws/integration", "simple-notification-service-sns", X4, Y3, "SNS", "alertas por e-mail")
 
-icone("aws/security", "identity-and-access-management-iam", 1295, Y2, "IAM", "role por tarefa")
+icone("aws/security", "identity-and-access-management-iam", 1415, Y2, "IAM", "role por tarefa")
 
 # município (direita)
-caixa(1620, 120, 1960, 1120, "Município", VERDE, tracejada=True)
-icone("aws/general", "mobile-client", 1790, 260, "App de campo (offline)", "agentes e Nupdecs")
-icone("aws/general", "client", 1790, 500, "Painel da Compdec", "cadastro vivo, visitas, indicador")
-icone("aws/general", "users", 1790, 740, "Central de alertas", "contatos por polígono atingido")
-icone("aws/general", "user", 1790, 980, "Famílias", "alerta nominal e rota de saída")
+caixa(1740, 120, 2080, 1120, "Município", VERDE, tracejada=True)
+icone("aws/general", "mobile-client", 1910, 260, "App de campo (offline)", "agentes e Nupdecs")
+icone("aws/general", "client", 1910, 500, "Painel da Compdec", "cadastro vivo, visitas, indicador")
+icone("aws/general", "users", 1910, 740, "Central de alertas", "contatos por polígono atingido")
+icone("aws/general", "user", 1910, 980, "Famílias", "alerta nominal e rota de saída")
 
 m = ICONE / 2 + 6
 # fontes -> ingestão (linha horizontal em Y1 vem das três fontes por um tronco vertical em x=400)
-seta([(190, 600), (190, 690 - m)], "baixa")
-seta([(250, 690), (400, 690), (400, Y1), (X1 - m, Y1)], "versiona", onde=0)
+seta([(350, 500), (350, 610 - m)], "baixa")
+seta([(410, 610), (520, 610), (520, Y1), (X1 - m, Y1)], "versiona", onde=0)
 # ingestão -> S3 -> EventBridge -> Batch GPU
 seta([(X1 + m, Y1), (X2 - m, Y1)])
 seta([(X1 - 30, Y1 + 72), (X1 - 30, Y2 - m)], "submete a exposição", onde=0)
@@ -152,14 +154,14 @@ seta([(X1 + m, Y3), (X2 - m, Y3)])
 seta([(X2 + m, Y3), (X3 - m, Y3)], "logs e métricas", pont=True)
 seta([(X3 + m, Y3), (X4 - m, Y3)], "alarme")
 # município -> ALB (tronco vertical em x=1600 e entrada por baixo do ALB)
-seta([(1740, 260), (1600, 260), (1600, 1000), (X1, 1000), (X1, Y3 + 72)], "sincroniza o cadastro", onde=2)
-seta([(1740, 500), (1600, 500)])
+seta([(1860, 260), (1720, 260), (1720, 1000), (X1, 1000), (X1, Y3 + 72)], "sincroniza o cadastro", onde=2)
+seta([(1860, 500), (1720, 500)])
 # API -> central de alertas -> famílias
-seta([(X2, Y3 + 72), (X2, 950), (1560, 950), (1560, 740), (1740, 740)], "contatos por polígono atingido", onde=1)
-seta([(1790, 790), (1790, 930)], "alerta nominal")
+seta([(X2, Y3 + 72), (X2, 950), (1680, 950), (1680, 740), (1860, 740)], "contatos por polígono atingido", onde=1)
+seta([(1910, 790), (1910, 930)], "alerta nominal")
 # CI/CD -> ECR -> serviços
-seta([(315, 1010), (380, 1010), (380, 1075), (X2, 1075), (X2, Y3 + 110)], "imagem por tag", cor=ROXO, pont=True, onde=2)
-seta([(380, 1075), (1535, 1075), (1535, Y1 + 160), (X4, Y1 + 160), (X4, Y1 + 72)], cor=ROXO, pont=True)
+seta([(390, 960), (480, 960), (480, 1080), (X2, 1080), (X2, Y3 + 110)], "imagem por tag", cor=ROXO, pont=True, onde=2)
+seta([(480, 1080), (1655, 1080), (1655, Y1 + 160), (X4, Y1 + 160), (X4, Y1 + 72)], cor=ROXO, pont=True)
 
 img.save(SAIDA, optimize=True)
 print(SAIDA, img.size)
