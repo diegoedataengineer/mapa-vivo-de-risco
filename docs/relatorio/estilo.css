@@ -1,0 +1,38 @@
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 10.3pt; line-height: 1.42; color: #0f172a; }
+  .logo { height: 44px; margin: 0 0 14px; }
+  h1 { font-size: 21pt; line-height: 1.2; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { font-size: 11.5pt; font-weight: 600; color: #1e293b; margin: 0 0 12px; }
+  h2 { font-size: 13.5pt; font-weight: 700; margin: 20px 0 7px; padding-top: 6px; border-top: 1px solid #e2e8f0; page-break-after: avoid; }
+  h2:first-of-type { border-top: 0; }
+  h3 { font-size: 11pt; font-weight: 600; margin: 12px 0 5px; page-break-after: avoid; }
+  p { margin: 0 0 7px; text-align: left; }
+  b, strong { font-weight: 600; }
+  code, .mono { font-family: "IBM Plex Mono", monospace; font-size: 9.2pt; background: #f1f5f9; padding: 0 3px; border-radius: 3px; }
+  pre { font-family: "IBM Plex Mono", monospace; font-size: 8.6pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin: 6px 0 9px; white-space: pre-wrap; line-height: 1.35; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.4pt; page-break-inside: auto; }
+  th, td { border: 1px solid #e2e8f0; padding: 4px 7px; vertical-align: top; text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  tr { page-break-inside: avoid; }
+  table.meta td:first-child { width: 29%; background: #f8fafc; font-weight: 600; }
+  a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; }
+  ul { margin: 2px 0 8px 18px; padding: 0; } li { margin: 0 0 3px; }
+  figure { margin: 10px 0 12px; page-break-inside: avoid; text-align: center; }
+  figure img { max-width: 100%; max-height: 150mm; width: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+  figure.row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: flex-start; }
+  figure.row img { flex: 0 0 auto; }
+  figure.row.tres img { width: 32%; }
+  figure.row.dois img { width: 49%; }
+  figcaption { font-size: 8.8pt; color: #475569; margin-top: 5px; line-height: 1.35; text-align: left; }
+  figure.row figcaption { flex: 0 0 100%; }
+  .nota { background: #f8fafc; border-left: 3px solid #1e4e8c; padding: 6px 10px; margin: 8px 0 10px; font-size: 9.6pt; }
+  .kpi { display: flex; gap: 10px; margin: 6px 0 10px; }
+  .kpi div { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; }
+  .kpi b { display: block; font-size: 15pt; font-weight: 700; }
+  .kpi span { font-size: 8.8pt; color: #475569; }
+  .quebra { page-break-before: always; }
+  .peq { font-size: 9.2pt; color: #334155; }
+  hr { border: 0; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+  figure img.semborda { border: 0; }

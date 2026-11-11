@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mapa Vivo de Risco — Parte 1: pesquisa e definição da solução</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<img class="logo" src="figs/ceub.png" alt="CEUB">
+
+<h1>Mapa Vivo de Risco — cadastro das famílias nas áreas de risco de deslizamento e inundação</h1>
+<p class="sub">Sistematização — Ecossistemas Digitais Inteligentes · Parte 1: pesquisa e definição da solução</p>
+
+<table class="meta">
+  <tr><td>Disciplina</td><td>Ecossistemas Digitais Inteligentes — Prof. Ricardo Alves Neiva (Turma B, Campus Virtual)</td></tr>
+  <tr><td>Autor</td><td>Diego Nunes de Morais — trabalho individual</td></tr>
+  <tr><td>Data</td><td>10 de novembro de 2026</td></tr>
+  <tr><td>Entrega</td><td>Parte 1 — Pesquisa e definição da solução (problema, justificativa, objetivo, público, funcionalidades e fundamentação científica)</td></tr>
+  <tr><td>Artigo de fundamentação</td><td>Saito et al. (2019), <i>Sociedade &amp; Natureza</i>, SciELO — DOI <a href="https://doi.org/10.14393/SN-v31-2019-46320">10.14393/SN-v31-2019-46320</a> (PDF anexado à entrega)</td></tr>
+  <tr><td>Repositório</td><td><a href="https://github.com/diegoedataengineer/mapa-vivo-de-risco">github.com/diegoedataengineer/mapa-vivo-de-risco</a> (ADRs, Terraform, workflows, serviços)</td></tr>
+</table>
+
+<h2>1. Descrição do problema e do contexto</h2>
+<p>A Defesa Civil municipal não sabe quem mora dentro das áreas de risco de deslizamento e inundação que o próprio governo já mapeou. O Serviço Geológico do Brasil (SGB/CPRM) delimita os setores de risco e o Cemaden monitora 1.133 municípios, mas o polígono não diz quantas famílias estão dentro dele nem quem precisa de ajuda para sair. O PN-PDC 2025–2035 reconhece a lacuna: só 121 municípios têm a população em área de risco quantificada; a meta 1.1.6 quer 1.210 até 2035, e a 1.1.7 pede o cruzamento do Censo com as áreas monitoradas em 2.240 municípios (Brasil, 2025).</p>
+<p>A estimativa nacional existe, em escala grossa: IBGE e Cemaden encontraram 8,27 milhões de pessoas expostas em 872 municípios com o Censo 2010 (IBGE; Cemaden, 2018), e Saito et al. (2019), 7,1 milhões em 2,1 milhões de moradias nos 479 municípios prioritários. O método trabalha com o setor censitário e o Censo de 2010: não chega à edificação nem à família. Em 2024, técnicos do IBGE começaram a cruzar a setorização do SGB com os endereços do Censo 2022 (Araújo; Leitão, 2024), sinal de que o problema está aberto e a base nova permite resolvê-lo.</p>
+<p>O custo aparece em cada desastre. Em São Sebastião, em 2023, o alerta saiu com antecedência e a resposta comunitária foi mínima (Marengo et al., 2024); no Rio Grande do Sul, em 2024, só 11,2% da população estava cadastrada para alertas por SMS. O TCU descreve a defesa civil municipal como fragmentada, com equipes pequenas e alta rotatividade (TCU, 2026), e 13% dos municípios prioritários nem têm o órgão (Cotting et al., 2025). O contexto da solução é a prefeitura pequena ou média que recebe o alerta e tem o polígono, mas não tem o cadastro das famílias nem equipe para fazê-lo à mão.</p>
+
+<h2>2. Justificativa e benefícios esperados</h2>
+<p>A justificativa é legal, técnica e econômica. A Lei 12.608/2012 dá ao município o dever de mapear o risco e informar a população e, desde a Lei 14.750/2023, de alertar por sirene e celular; o PN-PDC transformou isso em meta com prazo. Os insumos são públicos (polígonos do SGB e do Cemaden, Censo 2022, imagens de resolução métrica), e redes neurais já segmentam edificações em assentamentos informais com qualidade para estimar exposição (Schuegraf et al., 2024; da Silva; Rodrigues-Jr; de Albuquerque, 2025). E o levantamento porta a porta sem priorização é, nas palavras de Saito et al. (2019), restritivo pelo custo.</p>
+<p>A IA é pontual: <b>o modelo não decide quem está em risco, ele diz onde olhar</b>. A confirmação continua humana, na visita, o que evita tomar uma lona de quintal por casa e evita que o cadastro seja lido como lista de remoção, medo documentado por Zandomenico e Martin (2022). Benefícios: para a Compdec, cadastro por setor de risco, visitas priorizadas e evidência para a meta 1.1.6; para as famílias, alerta com nome e endereço, rota de saída e prioridade para quem não sai sozinho; para Sedec e Cemaden, a estimativa nacional atualizada até a edificação; para o município, menos mortes evitáveis e menos custo de resposta.</p>
+
+<h2>3. Objetivo da aplicação</h2>
+<p><b>Objetivo geral.</b> Dar à Defesa Civil municipal um cadastro georreferenciado e atualizável das famílias que moram nas áreas de risco, com o menor custo de campo possível, para orientar alerta, evacuação e prevenção.</p>
+<p><b>Objetivos específicos.</b> (1) Cruzar os polígonos de risco com os setores e endereços do Censo 2022 e estimar domicílios e pessoas expostas. (2) Detectar as edificações dentro de cada polígono em imagem recente e apontar onde o Censo está defasado. (3) Priorizar as visitas por risco, densidade e defasagem, num aplicativo que funciona sem conexão. (4) Registrar cada família visitada e manter o cadastro vivo. (5) Expor o cadastro à central de alertas e ao indicador da meta 1.1.6, com privacidade e auditoria. A aplicação não substitui a setorização do SGB e não lança registro de família sem a visita.</p>
+
+<h2>4. Público-alvo e beneficiários</h2>
+<table>
+  <tr><th style="width:30%">Público</th><th>Papel na aplicação</th><th>O que ganha</th></tr>
+  <tr><td>Compdec (Defesa Civil municipal)</td><td>Cliente e operadora: configura áreas, aprova visitas, dispara alertas</td><td>Cadastro por setor, prioridade de campo, evidência para o PN-PDC</td></tr>
+  <tr><td>Agentes de campo e voluntários dos Nupdecs</td><td>Usuários do app: visitam e cadastram</td><td>Rota priorizada, formulário curto, trabalho offline</td></tr>
+  <tr><td>Famílias em área de risco</td><td>Beneficiárias, cadastradas com consentimento</td><td>Alerta nominal, rota de saída, prioridade</td></tr>
+  <tr><td>Sedec e Cemaden; assistência social e saúde</td><td>Leitoras do agregado; consumidoras com base legal</td><td>Exposição atualizada sem dado pessoal; vulneráveis localizados</td></tr>
+</table>
+<p>O alvo inicial são os 1.942 municípios prioritários do Sinpdec, com foco nos de 20 mil a 150 mil habitantes, cujos moradores em risco têm renda e saneamento piores que a média do próprio município (Saito et al., 2019).</p>
+
+<h2>5. Funcionalidades principais</h2>
+<table>
+  <tr><th style="width:27%">Funcionalidade</th><th>O que faz</th></tr>
+  <tr><td>Ingestão das bases públicas</td><td>Importa polígonos do SGB e do Cemaden, setores e endereços (CNEFE) do Censo 2022 e a imagem mais recente, com versão e data</td></tr>
+  <tr><td>Estimativa de exposição</td><td>Calcula domicílios e pessoas por polígono no método da BATER, com o Censo 2022 e os endereços</td></tr>
+  <tr><td>Detecção de edificações</td><td>Um modelo de segmentação processa a imagem em tiles e marca onde há mais construções do que endereços; a saída é lista de vistoria, nunca cadastro</td></tr>
+  <tr><td>Priorização e app de campo</td><td>Ordena por risco, densidade e defasagem; o app offline mostra o que visitar e registra a família com foto e posição</td></tr>
+  <tr><td>Cadastro vivo e alerta</td><td>Painel da Compdec com cobertura e defasagem; API entrega os contatos por polígono atingido à central de alertas</td></tr>
+  <tr><td>Indicador e governança</td><td>Relatório agregado para a meta 1.1.6; consentimento, acesso por município e trilha de auditoria</td></tr>
+</table>
+
+<h2>6. Fundamentação científica</h2>
+<p><b>Artigo selecionado.</b> SAITO, S. M.; DIAS, M. C. A.; ALVALÁ, R. C. S.; STENNER, C.; FRANCO, C. O.; RIBEIRO, J. V. M.; SOUZA, P. A.; SANTANA, R. A. S. M. <i>População urbana exposta aos riscos de deslizamentos, inundações e enxurradas no Brasil</i>. Sociedade &amp; Natureza, v. 31, e46320, 2019 (SciELO, Portal CAPES, acesso aberto). Os autores são do Cemaden e do IBGE.</p>
+<p><b>Objetivos e contribuições.</b> O artigo analisa a exposição em 479 municípios prioritários associando dados censitários e mapeamentos de risco. Contribui com um método, a BATER (Base Territorial Estatística de Áreas de Risco), que contorna a incompatibilidade entre polígono de risco e setor censitário com 4.683 recortes, 85% com dado por face de quadra; com resultados, como 43% dos moradores em risco com renda per capita de até meio salário mínimo, contra 27% no conjunto, e 17% de crianças pequenas e idosos; e com a recomendação de replicar o método a cada censo para priorizar prevenção e resposta.</p>
+<p><b>Relação com a solução.</b> O Mapa Vivo de Risco adota a BATER como ponto de partida e responde a cada limitação declarada pelos autores:</p>
+<table>
+  <tr><th style="width:42%">Limitação em Saito et al. (2019)</th><th>Resposta na solução</th></tr>
+  <tr><td>Censo de 2010</td><td>Censo 2022, com recálculo a cada novo censo, como os autores recomendam</td></tr>
+  <tr><td>Estimativa por recorte, sem chegar à moradia</td><td>Detecção de edificações por imagem, da face de quadra à casa</td></tr>
+  <tr><td>Levantamento de campo caro</td><td>Visita priorizada pelo modelo, só onde a imagem aponta defasagem; o formulário coleta as variáveis que o artigo mostra mais críticas (renda, esgotamento, crianças e idosos)</td></tr>
+  <tr><td>Graus de risco não considerados</td><td>Grau do SGB entra na priorização das visitas e do alerta</td></tr>
+</table>
+
+
+<hr>
+<p class="peq"><b>Declaração de uso de IA.</b> Ferramentas de IA generativa (Claude Code) foram utilizadas como assistente de pesquisa e redação, sob direção, revisão e validação do autor, a quem cabem a escolha do problema e do artigo, o escopo e a verificação das fontes.</p>
+<p class="peq"><b>Referências.</b> ARAÚJO, J. P. C.; LEITÃO, F. Database of areas of interest for characterizing the population vulnerable to hydrogeomorphological processes in Brazil. <i>Research, Society and Development</i>, v. 13, n. 6, e13013646213, 2024 · BRASIL. MIDR. <i>Plano Nacional de Proteção e Defesa Civil 2025–2035</i>. Brasília, 2025 · BRASIL. Lei nº 12.608, de 10 de abril de 2012 (Política Nacional de Proteção e Defesa Civil) · COTTING, M. et al. Capacidades municipais de gestão de riscos de desastres nos municípios prioritários do Brasil. <i>Revista Brasileira de Geografia</i>, v. 70, n. 2, p. 346–367, 2025 · DA SILVA, F.; RODRIGUES-JR, J. F.; DE ALBUQUERQUE, J. P. On the power of CNNs to detect slums in Brazil. <i>Computers, Environment and Urban Systems</i>, v. 121, 102306, 2025 · IBGE; CEMADEN. <i>População em áreas de risco no Brasil</i>. Rio de Janeiro: IBGE, 2018 · MARENGO, J. A. et al. Heavy rains and hydrogeological disasters on February 18th–19th, 2023, in the city of São Sebastião. <i>Natural Hazards</i>, v. 120, n. 8, p. 7997–8024, 2024 · SAITO, S. M. et al. População urbana exposta aos riscos de deslizamentos, inundações e enxurradas no Brasil. <i>Sociedade &amp; Natureza</i>, v. 31, e46320, 2019 · SCHUEGRAF, P. et al. AI-based building instance segmentation in formal and informal settlements. <i>IGARSS 2024</i>, IEEE, 2024 · TCU. <i>Acórdão 1781/2026 – Plenário</i>, 2026 · ZANDOMENICO, L. F.; MARTIN, D. Percepção de risco e vivência em área de risco de deslizamento. <i>Saúde e Sociedade</i>, v. 31, n. 4, e210541pt, 2022.</p>
+
+</body>
+</html>

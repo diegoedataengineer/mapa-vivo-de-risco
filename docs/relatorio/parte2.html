@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mapa Vivo de Risco — Parte 2: arquitetura e planejamento técnico</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<img class="logo" src="figs/ceub.png" alt="CEUB">
+
+<h1>Mapa Vivo de Risco — arquitetura e planejamento técnico</h1>
+<p class="sub">Sistematização — Ecossistemas Digitais Inteligentes · Parte 2: arquitetura e planejamento técnico da solução</p>
+
+<table class="meta">
+  <tr><td>Disciplina</td><td>Ecossistemas Digitais Inteligentes — Prof. Ricardo Alves Neiva (Turma B, Campus Virtual)</td></tr>
+  <tr><td>Autor</td><td>Diego Nunes de Morais — trabalho individual</td></tr>
+  <tr><td>Data</td><td>10 de novembro de 2026</td></tr>
+  <tr><td>Entrega</td><td>Parte 2 — Arquitetura, integração de ML, nuvem e contêineres, CI/CD, qualidade, confiabilidade e governança de dados</td></tr>
+  <tr><td>Repositório</td><td><a href="https://github.com/diegoedataengineer/mapa-vivo-de-risco">github.com/diegoedataengineer/mapa-vivo-de-risco</a> — Terraform (rede, dados, registro, serviços, lote, observabilidade, cicd), workflows do GitHub Actions, ADRs 0001 a 0004</td></tr>
+  <tr><td>Vídeo da Parte 3</td><td>LINK DO GOOGLE DRIVE A INSERIR (até 8 min, visualização aberta)</td></tr>
+</table>
+
+<h2>1. Introdução</h2>
+<p>O Mapa Vivo de Risco é um conjunto de serviços em contêiner na AWS, ligados por eventos, que transforma bases públicas e imagem de satélite em uma lista priorizada de visitas e, depois da visita, em um cadastro de famílias pronto para o alerta. <b>O modelo de visão computacional diz onde olhar; o cadastro continua humano.</b> As decisões abaixo estão escritas como código no repositório (Terraform, workflows e registros de decisão), validado mas ainda não aplicado em uma conta da AWS. As seções 2 a 6 seguem os itens 2.1 a 2.5 do enunciado.</p>
+
+<h2>2. Arquitetura da aplicação (item 2.1)</h2>
+<p>O estilo escolhido é de <b>serviços em contêiner orientados a eventos</b>: cada etapa do fluxo (ingestão, detecção, exposição, cadastro) roda sozinha e avisa a seguinte por um evento, sem chamada direta entre elas. A Figura 1 mostra os componentes, com as bases públicas à esquerda e os usuários do município à direita.</p>
+<figure>
+  <img class="semborda" src="figs/arquitetura.png" alt="Arquitetura do Mapa Vivo de Risco na AWS">
+  <figcaption><b>Figura 1.</b> Arquitetura na AWS: bases públicas, orquestração e entrega contínua à esquerda; serviços na VPC ao centro; usuários do município à direita. Setas cheias são chamadas e eventos; tracejadas, dados e imagens.</figcaption>
+</figure>
+<p>A Figura 2 segue um dado do início ao fim: cada passo é um serviço independente, e o que passa de um para o outro é um evento ou um arquivo versionado, nunca uma chamada direta.</p>
+<figure>
+<!--svg:fluxo-->
+  <figcaption><b>Figura 2.</b> Fluxo da aplicação em seis passos. 1 e 2 alimentam o S3; 3 e 4 rodam em lote quando há trabalho; 5 e 6 são a parte usada todos os dias, pela API. Todo dado pessoal fica no banco da faixa inferior.</figcaption>
+</figure>
+<p>Três razões justificam o estilo. O trabalho vem em rajadas: ingestão mensal, detecção só com imagem nova, cadastro no horário comercial; com eventos, cada parte liga quando tem o que fazer. Os perfis de máquina diferem: a detecção usa GPU por minutos e a API, CPU pequena o tempo todo, então escalam e falham separadas. E a arquitetura é evolutiva: um modelo, uma fonte ou outro sistema da carteira de Defesa Civil entra assinando um evento ou consumindo a API, sem mexer no resto. O custo aceito é a rastreabilidade mais difícil, compensada por município e versão das bases como identificador em todos os logs; um monólito em camadas exigiria GPU ligada o mês inteiro.</p>
+
+<h2>3. Integração de Machine Learning (item 2.2)</h2>
+<p><b>Problema resolvido.</b> O Censo diz quantos endereços existiam em 2022; a imagem diz o que está construído hoje dentro do polígono de risco, a lacuna que Saito et al. (2019) declaram. O componente de IA conta e localiza as edificações na imagem, para que a visita vá primeiro onde há mais casas do que endereços conhecidos. Ele não classifica risco, que vem do SGB, e não cria registro de família.</p>
+<p><b>Técnica e modelo.</b> Segmentação semântica de edificações com uma rede convolucional do tipo U-Net (Ronneberger; Fischer; Brox, 2015), aprendizagem supervisionada. A primeira versão parte de um modelo aberto já treinado para pegadas de edificações e é ajustada (<i>fine-tuning</i>) com amostras brasileiras, porque assentamentos informais têm telhados pequenos, colados e de material variado, onde modelos treinados em bairros planejados erram mais (Schuegraf et al., 2024; da Silva; Rodrigues-Jr; de Albuquerque, 2025). A máscara de saída vira polígonos por vetorização, cada um com uma confiança.</p>
+<p><b>Dados necessários.</b> Como entrada, ortofoto municipal ou imagem de satélite submétrica, recortada em tiles dentro dos polígonos do SGB e do Cemaden. Para o ajuste inicial e a validação, pegadas de edificações abertas (OpenStreetMap e bases globais). Para o retreino, os rótulos que o app devolve a cada visita: edificação confirmada, inexistente ou não residencial. Para comparar, os endereços do CNEFE do Censo 2022.</p>
+<p><b>Integração à aplicação.</b> O modelo é empacotado numa imagem de contêiner com o código de inferência e roda como job do Batch em GPU, acordado pelo evento de imagem nova. A inferência é idempotente por tile: o nome do resultado inclui tile, data da imagem e versão do modelo, então um job interrompido pelo Spot recomeça sem duplicar. As detecções vão para o PostGIS com a versão do modelo, e a exposição as usa para priorizar visitas. A saída só chega ao agente como sugestão no mapa; o que ele confirma ou descarta volta como rótulo (Figura 3).</p>
+<figure>
+  <img class="semborda" src="figs/ciclo-ml.png" alt="Ciclo do modelo de detecção">
+  <figcaption><b>Figura 3.</b> Ciclo do modelo de detecção: produção na linha de cima (imagem, inferência, detecções, lista de visitas) e aprendizado na de baixo (visita, rótulos, retreino, validação), que devolve uma versão nova ao ECR.</figcaption>
+</figure>
+<p>A validação usa IoU e F1 por município; uma versão nova só entra se não piorar o F1 em nenhum município de referência. O <i>drift</i> é medido pela taxa de descarte em campo: acima de uma em cada cinco sugestões num município, o modelo é marcado como suspeito ali e o retreino entra na fila.</p>
+
+<h2>4. Computação em nuvem e contêineres (item 2.3)</h2>
+<p>O provedor sugerido é a <b>AWS</b> (us-east-1), com dev e prod descritos pelo mesmo código Terraform e um arquivo de variáveis por ambiente. Pesaram GPU sob demanda em Spot, PostgreSQL gerenciado com PostGIS e pausa quando ocioso, e a equipe já operar a AWS. São Paulo (sa-east-1) é a alternativa se o contrato exigir dado hospedado no Brasil. A ingestão reaproveita o Airflow 3 que a empresa já opera numa VPS.</p>
+<figure>
+<!--svg:nuvem-->
+  <figcaption><b>Figura 4.</b> Serviços da AWS por camada, com o papel de cada um na solução e o motivo da escolha. O Airflow fica fora da AWS, na VPS que a empresa já opera, e entra com um usuário IAM mínimo.</figcaption>
+</figure>
+<p><b>Docker.</b> Todo serviço é uma imagem Docker com seu Dockerfile, a mesma do desenvolvimento à produção; localmente, um Docker Compose sobe PostGIS e API. A imagem da detecção carrega o modelo, então código e modelo andam juntos numa tag. Kubernetes (EKS) foi descartado: com quatro serviços, operar um cluster não se paga, e Fargate e Batch isolam por contêiner sem nós para manter.</p>
+
+<h2>5. DevOps e integração e entrega contínua (item 2.4)</h2>
+<p><b>Só um build verde chega a dev, e só uma tag aprovada por uma pessoa chega a prod.</b> Código, infraestrutura e modelo vivem num único repositório Git no GitHub, e o pipeline roda no GitHub Actions (Figuras 5 e 6).</p>
+<p>Os itens de configuração versionados são código, Terraform, workflows, Dockerfiles, versão do modelo e manifesto das bases. Um retreino do modelo é só mais um commit: passa pelo mesmo portão de F1 e sai na mesma imagem. Em prod, o ECS mantém 100% da capacidade e reverte sozinho se a versão nova não ficar saudável.</p>
+<figure>
+<!--svg:pipeline-->
+  <figcaption><b>Figura 5.</b> As quatro etapas do pipeline e o que roda em cada uma, com os dois portões: o merge só acontece com tudo verde, e prod só recebe uma tag aprovada por uma pessoa.</figcaption>
+</figure>
+<figure>
+  <img class="semborda" src="figs/cicd.png" alt="Fluxo de CI/CD">
+  <figcaption><b>Figura 6.</b> Caminho de uma mudança no GitHub Actions, do pull request à produção. A falha no <code>ci</code> volta ao autor; prod exige tag e aprovação manual no ambiente protegido.</figcaption>
+</figure>
+
+<h2>6. Qualidade, confiabilidade e governança de dados (item 2.5)</h2>
+<p>O dado mais sensível do sistema é a lista de quem mora numa casa em área de risco, com crianças, idosos e pessoas com mobilidade reduzida; por isso governança vem antes de desempenho. O município é o controlador do dado, o sistema é operador, e a base legal é a execução de política pública prevista na Lei 12.608/2012 (LGPD, art. 7º, III).</p>
+<p><b>Qualidade e consistência dos dados.</b> Cada base entra com manifesto (origem, data, sha256, versão) no S3 versionado, e toda estimativa aponta para as versões de base e de modelo que a geraram: linhagem completa. A ingestão rejeita geometria inválida e sistema de referência inesperado. O app valida o formulário e grava posição, foto, agente e hora; o modelo é medido por IoU, F1 e taxa de descarte em campo.</p>
+<p><b>Segurança e privacidade.</b> Dado pessoal existe só no Aurora, criptografado, em sub-rede privada; o S3 guarda imagens e agregados, nunca nomes, sem acesso público. Cada município vê só seus registros (<i>row-level security</i> no PostgreSQL) e cada perfil só os campos de que precisa. Credenciais no Secrets Manager, uma role mínima por tarefa, CloudTrail na nuvem e trilha de auditoria de quem viu e alterou cada registro. O consentimento é registrado na visita, e o indicador da meta 1.1.6 sai agregado, sem dado pessoal.</p>
+<p><b>Disponibilidade e confiabilidade.</b> A peça que não pode parar é a lista de contatos por polígono na hora do alerta, com meta de 99,5% no mês. Em prod, a API roda em duas zonas de disponibilidade e o banco tem duas instâncias com failover. O app funciona sem rede, porque área de risco costuma ser área sem sinal. Se a detecção parar, cadastro e alerta seguem com a última rodada.</p>
+<p><b>Monitoramento e identificação de falhas.</b> Health check em <code>/saude</code> no contêiner e no balanceador; logs estruturados com município e versão como rastreio. Alarmes do CloudWatch avisam por e-mail via SNS em erros 5xx, latência p95 alta, tarefas saudáveis abaixo do mínimo, CPU do banco alta, job com falha e ausência da ingestão mensal.</p>
+<p><b>Tratamento de erros e recuperação.</b> Jobs com retentativa (três na exposição, duas na detecção) e tempo máximo; idempotentes por tile e por município, podem ser refeitos com segurança, o que permite Spot. O deploy reverte sozinho quando a versão nova falha no health check. Depois da pausa do banco, a API repete a conexão e o painel mostra "acordando o banco". Backup diário com 14 dias em prod, proteção contra exclusão e S3 versionado. Um teste de caos em dev derruba a tarefa da API e exige que o alarme dispare e o serviço volte sozinho.</p>
+
+<hr>
+<p class="peq"><b>Declaração de uso de IA.</b> Ferramentas de IA generativa (Claude Code) foram utilizadas como assistente de desenvolvimento — na escrita do Terraform, dos workflows, dos serviços e testes, dos diagramas e na redação deste documento — sob direção, revisão e validação do autor. As decisões de arquitetura registradas nas ADRs, a escolha dos serviços de nuvem e do modelo e a revisão do texto são de responsabilidade e autoria do autor.</p>
+<p class="peq"><b>Referências.</b> BRASIL. Lei nº 12.608, de 10 de abril de 2012 (Política Nacional de Proteção e Defesa Civil) · BRASIL. Lei nº 13.709, de 14 de agosto de 2018 (Lei Geral de Proteção de Dados Pessoais) · BRASIL. MIDR. <i>Plano Nacional de Proteção e Defesa Civil 2025–2035</i>. Brasília, 2025 · DA SILVA, F.; RODRIGUES-JR, J. F.; DE ALBUQUERQUE, J. P. On the power of CNNs to detect slums in Brazil. <i>Computers, Environment and Urban Systems</i>, v. 121, 102306, 2025 · RONNEBERGER, O.; FISCHER, P.; BROX, T. U-Net: convolutional networks for biomedical image segmentation. In: <i>MICCAI 2015</i>. Springer, 2015, p. 234–241 · SAITO, S. M. et al. População urbana exposta aos riscos de deslizamentos, inundações e enxurradas no Brasil. <i>Sociedade &amp; Natureza</i>, v. 31, e46320, 2019 · SCHUEGRAF, P. et al. AI-based building instance segmentation in formal and informal settlements. <i>IGARSS 2024</i>, IEEE, 2024 · NEIVA, R. A. <i>Ecossistemas Digitais Inteligentes — webaulas 1 a 8</i>, CEUB, 2026.</p>
+
+</body>
+</html>

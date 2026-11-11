@@ -16,3 +16,4 @@ dist/
 .venv-diag/
 build/
 *.egg-info/
+docs/relatorio/parte2.render.html
